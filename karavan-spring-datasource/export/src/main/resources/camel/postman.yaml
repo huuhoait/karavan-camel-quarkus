@@ -1,7 +1,7 @@
 apiVersion: camel.apache.org/v1
 kind: Integration
 metadata:
-  name: Postman Demo
+  name: Setting Spring datasource
 spec:
   flows:
     - rest:
@@ -36,7 +36,7 @@ spec:
                       id: to-7497
                       parameters:
                         topic: parcels
-                        bootstrapServers: '{{camel.kafka.host}}'
+                        bootstrapServers: localhost:9092
                   - to:
                       uri: kamelet:postgresql-sink
                       id: to-b3d8
@@ -48,7 +48,7 @@ spec:
                         databaseName: '{{camel.postgresql.database-name}}'
                         query: >-
                           INSERT INTO parcels (id,address) VALUES
-                          ('1',:#address) ON CONFLICT (id)  DO NOTHING
+                          (:#id,:#address) ON CONFLICT (id)  DO NOTHING
     - route:
         id: payment
         from:
@@ -69,7 +69,7 @@ spec:
                 id: to-3866
                 parameters:
                   topic: payments
-                  bootstrapServers: '{{camel.kafka.host}}'
+                  bootstrapServers: localhost:9092
     - route:
         id: aggregator
         from:
@@ -144,7 +144,7 @@ spec:
                               uri: kamelet:postgresql-sink
                               id: to-69b9
                               parameters:
-                                serverName: '{{camel.postgresql.host}}'
+                                serverName: localhost
                                 serverPort: '5432'
                                 username: postgres
                                 password: postgres
@@ -152,22 +152,20 @@ spec:
                                 query: >-
                                   UPDATE parcels set status = 'CANCELED' WHERE
                                   id = :#id
-                          - throwException:
-                              id: throwException-2529
     - route:
-        id: route-mqtt-deliveries
+        id: route-0964
         from:
           uri: kamelet:mqtt-source
           id: from-16e1
           parameters:
             topic: deliveries
-            brokerUrl: '{{camel.mqtt.host}}'
+            brokerUrl: tcp://localhost:1883
           steps:
             - log:
                 message: 'Delivery: ${body}'
                 id: log-0831
     - route:
-        id: route-sql-process
+        id: route-2a2a
         from:
           uri: direct:sql-process
           id: from-f78d
@@ -185,11 +183,12 @@ spec:
                 id: log-a8df7
             - to:
                 uri: >-
-                  sql:INSERT INTO parcels (id,address) VALUES  (:#id,:#address)
-                  ON  CONFLICT (id)  DO    NOTHING
+                  sql:INSERT INTO parcels (id,address) VALUES 
+                  (:#id,:#address) ON  CONFLICT (id)  DO    NOTHING
                 id: to-fe28f
                 parameters:
-                  dataSource: '#bean:T1'
+                  dataSource: '#bean:datasource'
+                  outputType: SelectOne
             - to:
                 uri: bean:myBean
                 id: to-8a4b
