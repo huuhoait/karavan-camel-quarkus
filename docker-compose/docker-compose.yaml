@@ -1,0 +1,101 @@
+---
+version: '3.8'
+services:
+
+  zookeeper:
+    container_name: zookeeper
+    image: confluentinc/cp-zookeeper:latest
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    container_name: kafka
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CREATE_TOPICS: "events:1:1"
+
+  artemis:
+    image: symptoma/activemq:latest
+    container_name: artemis
+    environment:
+      - ARTEMIS_USER=admin
+      - ARTEMIS_PASSWORD=admin
+      - ANONYMOUS_LOGIN=true
+    ports:
+      - "61616:61616"
+      - "1883:1883"
+      - "8161:8161"  
+  
+  postgres:
+    image: postgres
+    container_name: postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=demo
+    ports:
+      - '5432:5432'
+    volumes:
+      - ./postgres_db.sql:/docker-entrypoint-initdb.d/postgres_db.sql
+    command: 'postgres --max_prepared_transactions=100'
+
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4
+    #ßßrestart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: root
+    ports:
+      - "5050:80"
+
+  postman:
+    container_name: postman
+    image: huuhoait/postman:1.0.0
+    restart: always
+    environment:
+      CAMEL_HEALTH_ENABLED: TRUE
+      CAMEL_HEALTH_EXPOSURE-LEVEL: FULL
+      QUARKUS_KUBERNETES-CLIENT_TRUST-CERTS: TRUE
+      QUARKUS_CONTAINER-IMAGE_GROUP: HUUHOAIT
+      QUARKUS_CONTAINER-IMAGE_NAME: POSTMAN
+      QUARKUS_OPENSHIFT_ROUTE_EXPOSE: FALSE
+      QUARKUS_OPENSHIFT_PART-OF: POSTMAN
+      QUARKUS_OPENSHIFT_REPLICAS: 1
+      CAMEL_SERVLET_MAPPING_CONTEXT-PATH: /*
+      CAMEL_POSTGRESQL_HOST: postgres
+      CAMEL_POSTGRESQL_PORT: 5432
+      CAMEL_POSTGRESQL_USERNAME: postgres
+      CAMEL_POSTGRESQL_PASSWORD: postgres
+      CAMEL_POSTGRESQL_DATABASE-NAME: demo
+      CAMEL_MAIN_SOURCE-LOCATION-ENABLED: TRUE
+      QUARKUS_CONTAINER-IMAGE_BUILDER: JIB
+      QUARKUS_DATASOURCE_DB-KIND: pgsql
+      QUARKUS_DATASOURCE_USERNAME: postgres
+      QUARKUS_DATASOURCE_PASSWORD: postgres
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/demo
+      QUARKUS_DATASOURCE_JDBC_MAX-SIZE: 16
+      QUARKUS_DATASOURCE_T1_DB-KIND: pgsql
+      QUARKUS_DATASOURCE_T1_USERNAME: postgres
+      QUARKUS_DATASOURCE_T1_PASSWORD: postgres
+      QUARKUS_DATASOURCE_T1_JDBC_URL: jdbc:postgresql://postgres:5432/demo
+      QUARKUS_DATASOURCE_T1_JDBC_MAX-SIZE: 16
+      CAMEL_KAFKA_HOST: kafka:9092
+      CAMEL_MQTT_HOST: tcp://artemis:1883
+      CAMEL_JMS_HOST: tcp://artemis:61616
+    ports:
+      - "5010:8080"

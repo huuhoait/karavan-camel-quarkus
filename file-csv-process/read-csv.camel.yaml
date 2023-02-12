@@ -1,0 +1,89 @@
+- route:
+    id: route-4e3b
+    from:
+      uri: file:/Volumes/XData/Work/Java/agra/
+      id: from-ac73
+      parameters:
+        fileName: student.data
+        noop: false
+        delete: false
+      steps:
+        - log:
+            message: 'dât in: ${date:now:yyyy-MM-dd''T''HH:mm:ssZ}'
+            id: log-2f71
+        - unmarshal:
+            id: unmarshal-4de1
+            bindy:
+              type: Csv
+              id: bindy-1fa8
+              classType: org.camel.karavan.demo.postman.Student
+        - split:
+            id: split-481b
+            expression:
+              simple:
+                expression: ${body}
+                id: simple-0f5e
+                resultType: java.util.ArrayList
+            parallelProcessing: true
+            stopOnException: true
+            steps:
+              - doTry:
+                  id: doTry-440d
+                  doCatch:
+                    - exception:
+                        - java.lang.ArithmeticException
+                      id: doCatch-02c4
+                      steps:
+                        - setBody:
+                            id: setBody-81ad
+                            expression:
+                              simple:
+                                expression: '**********Error with bòdy ${body}'
+                                id: simple-dc78
+                        - log:
+                            message: '**********error: ${body}'
+                            id: log-3d62
+                  steps:
+                    - to:
+                        uri: bean:myprocess
+                        id: to-d0ba
+                    - marshal:
+                        id: marshal-1fe5
+                        json:
+                          id: json-c5a31
+                          library: jackson
+                          contentTypeHeader: false
+                          useDefaultObjectMapper: true
+                          prettyPrint: true
+                          unmarshalType: org.camel.karavan.demo.postman.Student
+                    - to:
+                        uri: kamelet:postgresql-sink
+                        id: to-69b9
+                        parameters:
+                          serverName: localhost
+                          serverPort: '5432'
+                          username: postgres
+                          password: postgres
+                          databaseName: demo
+                          query: >-
+                            INSERT INTO student
+                            (id,first_name,last_name,phone_num,updated_time_stamp)
+                            VALUES
+                            (:#id,:#firstName,:#lastName,:#phoneNumber,:#updatedTimeStamp)
+                            ON  CONFLICT (id)  DO    NOTHING
+                    - log:
+                        message: dataout ${body}
+                        id: log-d202
+        - to:
+            uri: jdbc:datasource
+            id: to-058b
+        - log:
+            message: dataout ${date:now:yyyy-MM-dd'T'HH:mm:ssZ}
+            id: log-d202
+        - stop:
+            id: stop-d04b
+- beans:
+    - name: my-aggregate
+      type: org.camel.karavan.demo.postman.MyAggregate
+    - name: myprocess
+      type: org.camel.karavan.demo.postman.CustomProcessor
