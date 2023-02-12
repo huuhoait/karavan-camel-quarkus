@@ -4,5 +4,8 @@
 .vscode
 .idea
 .mvn
-target/*
-
+.classpath
+.project
+.settings/
+target/
+.DS_Store
