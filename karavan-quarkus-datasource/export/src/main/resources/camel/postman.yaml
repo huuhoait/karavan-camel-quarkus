@@ -1,7 +1,8 @@
 apiVersion: camel.apache.org/v1
 kind: Integration
 metadata:
-  name: Postman Demo
+  name:   Postman Docker Agroal Datasource
+
 spec:
   flows:
     - rest:
