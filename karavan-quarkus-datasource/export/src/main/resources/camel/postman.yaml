@@ -1,7 +1,7 @@
 apiVersion: camel.apache.org/v1
 kind: Integration
 metadata:
-  name:   Postman Docker Agroal Datasource
+  name: Postman Docker Agroal Datasource MVN
 
 spec:
   flows:
@@ -20,7 +20,7 @@ spec:
           id: from-6c47
           steps:
             - log:
-                message: 'Received: ${body}'
+                message: "Received: ${body}"
                 id: log-b736
             - multicast:
                 id: multicast-2b1a
@@ -37,16 +37,16 @@ spec:
                       id: to-7497
                       parameters:
                         topic: parcels
-                        bootstrapServers: '{{camel.kafka.host}}'
+                        bootstrapServers: "{{camel.kafka.host}}"
                   - to:
                       uri: kamelet:postgresql-sink
                       id: to-b3d8
                       parameters:
-                        serverName: '{{camel.postgresql.host}}'
-                        serverPort: '{{camel.postgresql.port}}'
-                        username: '{{camel.postgresql.username}}'
-                        password: '{{camel.postgresql.password}}'
-                        databaseName: '{{camel.postgresql.database-name}}'
+                        serverName: "{{camel.postgresql.host}}"
+                        serverPort: "{{camel.postgresql.port}}"
+                        username: "{{camel.postgresql.username}}"
+                        password: "{{camel.postgresql.password}}"
+                        databaseName: "{{camel.postgresql.database-name}}"
                         query: >-
                           INSERT INTO parcels (id,address) VALUES
                           ('1',:#address) ON CONFLICT (id)  DO NOTHING
@@ -70,7 +70,7 @@ spec:
                 id: to-3866
                 parameters:
                   topic: payments
-                  bootstrapServers: '{{camel.kafka.host}}'
+                  bootstrapServers: "{{camel.kafka.host}}"
     - route:
         id: aggregator
         from:
@@ -83,7 +83,7 @@ spec:
             consumerGroup: postman
           steps:
             - log:
-                message: 'Aggegating: ${body}'
+                message: "Aggegating: ${body}"
                 id: log-5fe7
             - unmarshal:
                 id: unmarshal-8a7e
@@ -115,14 +115,14 @@ spec:
                                   id: json-aac8
                                   library: jackson
                             - log:
-                                message: 'Send to MQTT : ${body}'
+                                message: "Send to MQTT : ${body}"
                                 id: log-9280
                             - to:
                                 uri: kamelet:mqtt-sink
                                 id: to-7bc0
                                 parameters:
                                   topic: deliveries
-                                  brokerUrl: tcp://localhost:1883
+                                  brokerUrl: "{{camel.mqtt.host}}"
                       id: choice-9667
                       otherwise:
                         id: otherwise-bc90
@@ -131,7 +131,7 @@ spec:
                               id: setBody-85da
                               expression:
                                 groovy:
-                                  expression: 'body.find { it.containsKey(''status'') } '
+                                  expression: "body.find { it.containsKey('status') } "
                                   id: groovy-afef
                           - marshal:
                               id: marshal-172a
@@ -139,22 +139,20 @@ spec:
                                 id: json-a995
                                 library: jackson
                           - log:
-                              message: 'Send to database: ${body}'
+                              message: "Send to database: ${body}"
                               id: log-8e6b
                           - to:
                               uri: kamelet:postgresql-sink
                               id: to-69b9
                               parameters:
-                                serverName: '{{camel.postgresql.host}}'
-                                serverPort: '5432'
+                                serverName: "{{camel.postgresql.host}}"
+                                serverPort: "5432"
                                 username: postgres
                                 password: postgres
                                 databaseName: demo
                                 query: >-
                                   UPDATE parcels set status = 'CANCELED' WHERE
-                                  id = :#id
-                          - throwException:
-                              id: throwException-2529
+                                  id = :#id                        
     - route:
         id: route-mqtt-deliveries
         from:
@@ -162,10 +160,10 @@ spec:
           id: from-16e1
           parameters:
             topic: deliveries
-            brokerUrl: '{{camel.mqtt.host}}'
+            brokerUrl: "{{camel.mqtt.host}}"
           steps:
             - log:
-                message: 'Delivery: ${body}'
+                message: "Delivery: ${body}"
                 id: log-0831
     - route:
         id: route-sql-process
@@ -174,7 +172,7 @@ spec:
           id: from-f78d
           steps:
             - log:
-                message: 'sql-process body:'
+                message: "sql-process body:"
                 id: log-8df7
             - unmarshal:
                 id: unmarshal-0736
@@ -190,12 +188,12 @@ spec:
                   ON  CONFLICT (id)  DO    NOTHING
                 id: to-fe28f
                 parameters:
-                  dataSource: '#bean:T1'
+                  dataSource: "#bean:T1"
             - to:
                 uri: bean:myBean
                 id: to-8a4b
             - log:
-                message: 'sql-process2 body: ${body}'
+                message: "sql-process2 body: ${body}"
                 id: log-a8df7
     - beans:
         - name: aggregator
