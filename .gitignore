@@ -1,0 +1,8 @@
+.export
+.camel-jbang
+.camel
+.vscode
+.idea
+.mvn
+target/*
+

@@ -1,0 +1,190 @@
+apiVersion: camel.apache.org/v1
+kind: Integration
+metadata:
+  name: Postman Demo
+spec:
+  flows:
+    - rest:
+        id: rest-4933
+        post:
+          - id: post-0a9d
+            to: direct:post
+        path: /parcels
+        consumes: application/json
+        produces: application/json
+    - route:
+        id: post
+        from:
+          uri: direct:post
+          id: from-d55f
+          steps:
+            - log:
+                message: 'Received: ${body}'
+                id: log-326e
+            - multicast:
+                id: multicast-d43d
+                aggregationStrategy: >-
+                  #class:org.apache.camel.processor.aggregate.UseOriginalAggregationStrategy
+                parallelProcessing: true
+                streaming: true
+                steps:
+                  - to:
+                      uri: kamelet:kafka-not-secured-sink
+                      id: to-f54c
+                      parameters:
+                        topic: parcels
+                        bootstrapServers: localhost:9092
+                  - to:
+                      uri: direct:sql-process
+                      id: to-bb76
+                  - to:
+                      uri: >-
+                        sql:INSERT INTO parcels (id,address) VALUES 
+                        ('1','2') ON  CONFLICT (id)  DO    NOTHING
+                      id: to-fe8f
+                      parameters:
+                        dataSource: '#bean:dataSource'
+                        outputType: SelectOne
+    - route:
+        id: payment
+        from:
+          uri: kamelet:jms-apache-activemq-source
+          id: from-5102
+          parameters:
+            destinationType: queue
+            destinationName: payments
+            brokerURL: tcp://localhost:61616
+          steps:
+            - to:
+                uri: xj:identity
+                id: to-6468
+                parameters:
+                  transformDirection: XML2JSON
+            - to:
+                uri: kamelet:kafka-not-secured-sink
+                id: to-1b56
+                parameters:
+                  topic: payments
+                  bootstrapServers: localhost:9092
+
+    - route:
+        id: aggregator
+        from:
+          uri: kamelet:kafka-not-secured-source
+          id: from-0880
+          parameters:
+            topic: parcels,payments
+            bootstrapServers: localhost:9092
+            autoCommitEnable: true
+            consumerGroup: postman
+          steps:
+            - log:
+                message: 'Aggegating: ${body}'
+                id: log-8315
+            - unmarshal:
+                id: unmarshal-d04b
+                json:
+                  id: json-0c40
+                  library: jackson
+            - aggregate:
+                aggregationStrategy: aggregator
+                id: aggregate-dbb3
+                completionSize: 2
+                correlationExpression:
+                  groovy:
+                    expression: body.get('id')
+                    id: groovy-7777
+                steps:
+                  - choice:
+                      when:
+                        - id: when-2ad6
+                          expression:
+                            groovy:
+                              expression: >-
+                                body.find { it.containsKey('status') }.status ==
+                                'confirmed'
+                              id: groovy-f904
+                          steps:
+                            - marshal:
+                                id: marshal-0acb
+                                json:
+                                  id: json-1ba9
+                                  library: jackson
+                            - log:
+                                message: 'Send to MQTT : ${body}'
+                                id: log-1883
+                            - to:
+                                uri: kamelet:mqtt-sink
+                                id: to-f756
+                                parameters:
+                                  topic: deliveries
+                                  brokerUrl: tcp://localhost:1883
+                      id: choice-409d
+                      otherwise:
+                        id: otherwise-21bc
+                        steps:
+                          - setBody:
+                              id: setBody-3dd3
+                              expression:
+                                groovy:
+                                  expression: 'body.find { it.containsKey(''status'') } '
+                                  id: groovy-88cf
+                          - marshal:
+                              id: marshal-853f
+                              json:
+                                id: json-93cb
+                                library: jackson
+                          - log:
+                              message: 'Send to database: ${body}'
+                              id: log-e57f
+                          - to:
+                              uri: kamelet:postgresql-sink
+                              id: to-35b9
+                              parameters:
+                                serverName: localhost
+                                serverPort: '5432'
+                                username: postgres
+                                password: postgres
+                                databaseName: demo
+                                query: >-
+                                  UPDATE parcels set status = 'CANCELED' WHERE
+                                  id = :#id
+    - route:
+        id: route-71ad
+        from:
+          uri: kamelet:mqtt-source
+          id: from-ee08
+          parameters:
+            topic: deliveries
+            brokerUrl: tcp://localhost:1883
+          steps:
+            - log:
+                message: 'Delivery: ${body}'
+                id: log-9478
+    - route:
+        id: route-2a2a
+        from:
+          uri: direct:sql-process
+          id: from-f78d
+          steps:
+            - log:
+                message: 'sql-process body: ${body}'
+                id: log-8df7
+                loggingLevel: DEBUG
+            - unmarshal:
+                id: unmarshal-0736
+                json:
+                  id: json-fdb1
+                  library: jackson
+            - to:
+                uri: >-
+                        sql:INSERT INTO parcels (id,address) VALUES 
+                        (:#id,:#address) ON  CONFLICT (id)  DO    NOTHING
+                id: to-fe28f
+                parameters:
+                  dataSource: '#bean:dataSource'
+                  outputType: SelectOne
+
+    - beans:
+        - name: aggregator
+          type: org.apache.camel.processor.aggregate.GroupedBodyAggregationStrategy
