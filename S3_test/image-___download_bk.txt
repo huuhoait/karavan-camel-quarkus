@@ -1,0 +1,81 @@
+- route:
+    id: route-6382
+    from:
+      uri: direct:image-download
+      id: from-1b74
+      parameters:
+        exchangePattern: InOut
+      description: front
+      steps:
+        - setHeader:
+            name: Content-Type
+            id: setHeader-ec81
+            expression:
+              constant:
+                expression: text/plain
+                id: constant-b8f1
+        - setHeader:
+            name: x-api-key
+            id: setHeader-3e9b
+            expression:
+              constant:
+                expression: dms-mobile-0c88e9137d15
+                id: constant-60a0
+        - setBody:
+            id: setBody-1725
+            expression:
+              simple:
+                expression: |-
+                  {
+
+                      "requestId": "a7ea23df-7468-439d-9b12-26eb4a760901",
+                      "requestTime": "",
+                      "channelId": "",
+                      "signature": "0844ad00a713b62d7ef452bd45d1c82da3c64224428cbea39ee9052c47a416ec",
+                      "data": {
+                          "partnerCode": "mobile",
+                          "categoryCode": "mobile#ekyc#image#hv",
+                          "documentId":"${body}",
+                          "isReturnBase64":  false
+                      }
+                  }
+                id: simple-d299
+        - to:
+            uri: log:log header
+            id: to-5e7c
+            parameters:
+              multiline: true
+              showBody: true
+              showHeaders: true
+              plain: true
+        - to:
+            uri: https://pre-openbanking.hdbank.com.vn/eks/dms/v1/file/download
+            id: to-2640
+            parameters:
+              httpMethod: POST
+        - choice:
+            when:
+              - id: when-756c
+                expression:
+                  jq:
+                    expression: .responseCode == "00"
+                    id: jq-d02e
+                steps:
+                  - setBody:
+                      id: setBody-8a65
+                      expression:
+                        jsonpath:
+                          expression: $.data.linkDownload
+                          id: jsonpath-601d
+            id: choice-aded
+            otherwise:
+              id: otherwise-1459
+              steps:
+                - setBody:
+                    id: setBody-8945
+                    expression:
+                      jsonpath:
+                        expression: $.concat($.responseCode," - ", $.responseMessage)
+                        id: jsonpath-015a
+                        propertyName: GAGG
+    description: image-download

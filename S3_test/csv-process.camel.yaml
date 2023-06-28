@@ -1,0 +1,122 @@
+- route:
+    id: route-4e3b
+    from:
+      uri: file:/Volumes/Data/Trainning/ApacheCamel/S3_test
+      id: from-ac73
+      parameters:
+        fileName: S3_ekyc_all.csv
+        noop: false
+        delete: false
+      steps:
+        - unmarshal:
+            id: unmarshal-d46f
+            bindy:
+              type: Csv
+              id: bindy-1fa8
+              #classType: org.camel.karavan.demo.postman.S3
+              classType: org.camel.karavan.S3
+        - split:
+            id: split-2e47
+            expression:
+              simple:
+                expression: ' ${body}'
+                id: simple-a2e2
+                resultType: java.util.ArrayList
+            aggregationStrategy: customAggSplit
+            steps:
+              - multicast:
+                  id: multicast-b763
+                  aggregationStrategy: customAgg
+                  parallelProcessing: true
+                  parallelAggregate: true
+                  steps:
+                    - to:
+                        uri: direct:download-front-image
+                        id: to-8169
+                        description: front
+                    - to:
+                        uri: direct:download-back-image
+                        id: to-e7cf
+                        description: back
+              - marshal:
+                  id: marshal-3511
+                  jacksonXml:
+                    id: jacksonXml-59db
+              - log:
+                  message: 'Marshaal: ${body}'
+                  id: log-09bd
+              - to:
+                  uri: file:/Volumes/Data/Trainning/ApacheCamel/S3_test/
+                  id: to-78f9
+                  parameters:
+                    fileName: output.s3
+                    fileExist: Append
+                    jailStartingDirectory: false
+        - log:
+            message: out off split ${body}
+            id: log-3d3c
+- route:
+    id: route-af18c
+    from:
+      uri: direct:download-front-image
+      id: from-c5ed
+      steps:
+        - setProperty:
+            name: imageDataProp
+            id: setProperty-3d4b
+            expression:
+              simple:
+                expression: |-
+                  {
+                      "imageId": "${body.ocrFront.substring(1,32)}",
+                      "type":"front"
+                  }
+                id: simple-729
+                resultType: java.lang.String
+            description: set Data
+        - to:
+            uri: direct:image-download
+            id: to-7490
+        - log:
+            message: FRONT:${body}
+            id: log-87f5
+    description: dowload-front
+- route:
+    id: route-af8c
+    from:
+      uri: direct:download-back-image
+      id: from-c51ed
+      steps:
+        - setProperty:
+            name: imageDataProp
+            id: setProperty-2442
+            expression:
+              simple:
+                expression: |-
+                  {
+                      "imageId": "${body.ocrBack.substring(1,32)}",
+                      "type":"back"
+                  }
+                id: simple-2e19
+        - to:
+            uri: direct:image-download
+            id: to-17490
+    description: download-back
+- route:
+    id: route-b44e
+    from:
+      uri: direct:download-face-image
+      id: from-8250
+      steps:
+        - setBody:
+            id: setBody-51c0
+            expression:
+              simple:
+                expression: ${body.ocrFace}
+                id: simple-4db6
+        - to:
+            uri: direct:image-download
+            id: to-fa69
+    description: download-back
+
+

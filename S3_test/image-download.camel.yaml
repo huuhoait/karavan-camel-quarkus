@@ -1,0 +1,72 @@
+- route:
+    id: route-6382
+    from:
+      uri: direct:image-download
+      id: from-1b74
+      parameters:
+        exchangePattern: InOut
+      description: image-download
+      steps:
+        - log:
+            message: 'imageDataProp: ${exchangeProperty.imageDataProp}'
+            id: log-c4c7
+        - setHeader:
+            name: Content-Type
+            id: setHeader-ec81
+            expression:
+              constant:
+                expression: text/plain
+                id: constant-b8f1
+        - setHeader:
+            name: x-api-key
+            id: setHeader-3e9b
+            expression:
+              constant:
+                expression: dms-mobile-0c88e9137d15
+                id: constant-60a0
+        - process:
+            ref: S3Processor
+            id: process-7c9b
+        - log:
+            message: 'Demo Body: ${body}'
+            id: log-eae5
+        - setBody:
+            id: setBody-1725
+            expression:
+              simple:
+                expression: |-
+                  {
+                      "responseCode": "00",
+                      "responseMessage": "successfully",
+                      "responseTime": "2023-06-25T09:21:22.576+00:00",
+                      "data": {
+                          "linkDownload": "https://ab.com "
+                      }
+                  }
+                id: simple-d299
+        - choice:
+            when:
+              - id: when-756c
+                expression:
+                  jq:
+                    expression: .responseCode == "00"
+                    id: jq-d02e
+                steps:
+                  - setBody:
+                      id: setBody-8a65
+                      expression:
+                        jsonpath:
+                          expression: $.data.linkDownload
+                          id: jsonpath-601d
+            id: choice-aded
+            otherwise:
+              id: otherwise-1459
+              steps:
+                - setBody:
+                    id: setBody-8945
+                    expression:
+                      jsonpath:
+                        expression: $.concat($.responseCode," - ", $.responseMessage)
+                        id: jsonpath-015a
+                        propertyName: GAGG
+    description: image-download
