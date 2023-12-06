@@ -1,0 +1,69 @@
+- rest:
+    id: rest-8cd4
+    post:
+      - path: /rest-api
+        to: direct:direct1
+        id: post-032f
+- route:
+    nodePrefixId: route-e2a
+    id: route-8847
+    from:
+      uri: timer
+      id: from-0922
+      parameters:
+        timerName: timer1
+        delay: '1000'
+        period: '20000'
+      steps:
+        - setBody:
+            expression:
+              simple:
+                expression: Hello World
+                id: simple-3fc3
+            id: setBody-b8e4
+        - to:
+            uri: direct
+            id: to-280f
+            parameters:
+              name: direct1
+- route:
+    nodePrefixId: route-6ce
+    id: route-a9b6
+    from:
+      uri: direct
+      id: from-a1fa
+      parameters:
+        name: direct1
+      steps:
+        - setBody:
+            expression:
+              constant:
+                expression: select count(*) from automation_triggers
+                id: constant-fdc4
+            id: log-dcfc
+            description: count automation
+        - to:
+            uri: jdbc
+            id: to-ca7a
+            parameters:
+              outputType: SelectOne
+              dataSourceName: datasource
+        - log:
+            message: output ${body}
+            id: log-76e5
+        - setBody:
+            expression:
+              simple:
+                expression: 'output: ${body}'
+                id: simple-3051
+            id: setBody-00c2
+- beans:
+    - constructors: {}
+      name: datasource
+      properties:
+        jdbcUrl: jdbc:mysql://localhost:3306/corteza
+        username: '{{db.username:root}}'
+        password: '{{db.password:123456}}'
+        poolName: '{{db.poolName:HiKariPool}}'
+        minimumIdle: '{{db.minPool:3}}'
+      type: com.zaxxer.hikari.HikariDataSource
